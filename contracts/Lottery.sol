@@ -4,7 +4,6 @@ contract Lottery {
     uint public ticket_cost;
     uint public latestBlockNum;
     uint public lotteryPrice;
-    uint public submittedSecretNum;
 
     uint32 public globalXOR;
     
@@ -14,41 +13,40 @@ contract Lottery {
     address [] approvedTickets;
     address [] winners;
     
-    uint public approvedTicketsHead;
-
     mapping(bytes32 => address) ticketHash;
     mapping(address => uint) playerBoughtTicketNum;
 
-    uint32 public submissionTime   = 5;//5760; //Worst case around ~1 Day.
-    uint32 public submitSecretTime = 5;//2400; //Worst case around ~1 hour.
-    uint32 public payoutTime       = 2400; //Worst case around ~1 hour.
+    uint32 public submissionTime;   
+    uint32 public submitSecretTime; 
+    uint32 public payoutTime;
+
+    uint   public selectedIndex;
     
 
-    function Lottery() { //Adternative signature: function Lottery(uint ticketPrice) {
-	ticket_cost      = 100 finney; // 0.1 ether == 100 finney  
-	lotteryPrice     = 0;
-	
-	owner            = msg.sender;
+    function Lottery() { //Adternative signature: function Lottery(uint ticketPrice, submissionTime, submitSecretTime, payoutTime) {
+	ticket_cost         = 100000000000000000; // 0.1 ether == 100000000000000000 wei  
+	lotteryPrice        = 0;
+	owner               = msg.sender;
+	latestBlockNum      = block.number;
 
-	latestBlockNum   = block.number;
-	submittedSecretNum  = 0;
-	approvedTicketsHead = 0;
+	submissionTime   = 5; //5760; //Worst case around ~1 Day.
+	submitSecretTime = 5; //2400; //Worst case around ~1 hour.
+	payoutTime       = 2400; //Worst case around ~1 hour.
     }
 
     function buyLotteryTicket(bytes32 secretHash, uint ticketNum) payable returns (bool success)
     {
-	if( (block.number - latestBlockNum > submissionTime) || //Checks it bet time completed or not.
+	if( (block.number - latestBlockNum > submissionTime) || //Checks is it the lottery ticket buy time completed or not.
 	    msg.value != ticket_cost * ticketNum             ||  //Double check for the paid money.
-	    ticketHash[secretHash] != 0                      || 
+	    ticketHash[secretHash] != 0                      ||
+	    ticketNum > 10                                   ||
 	    ticketNum == 0 )
 	    revert();
 	    		
-	if (ticketHash[secretHash] != msg.sender)
-	    ticketHash[secretHash] = msg.sender;
-	
-	playerBoughtTicketNum[msg.sender] += ticketNum;
-	lotteryPrice               += msg.value;
 
+	ticketHash[secretHash]             = msg.sender;
+	playerBoughtTicketNum[msg.sender] += ticketNum;
+	lotteryPrice                      += msg.value;
 	LogNewLotteryPrice(lotteryPrice);	
 	LogBuyLottery(block.number, msg.sender);
 	return true;
@@ -67,7 +65,6 @@ contract Lottery {
 	bytes32 secretSHA;
 	if( ticketHash[ secretSHA=keccak256(secretNum, msg.sender) ] == msg.sender ) { //Approved.
 	    globalXOR = globalXOR ^ secretNum;	  
-	    submittedSecretNum += 1;
 	    delete ticketHash[secretSHA]; //First clean. Freed memory is rewarded and should be set to null.
 		
 	}
@@ -86,29 +83,35 @@ contract Lottery {
     {
 	if( block.number-latestBlockNum < submissionTime+submitSecretTime || msg.sender != owner )
 	  revert();
+
+	selectedIndex = globalXOR % approvedTickets.length;
 	
-	address winnerBuyer = approvedTickets[ globalXOR % approvedTickets.length ];
+	address winnerBuyer = approvedTickets[ selectedIndex ];
 	winners.push(winnerBuyer);
 
 	if(!winnerBuyer.send(lotteryPrice))
-	    revert();
+	  revert();
 	
 	latestBlockNum      = block.number;
 
 	LogWinner(block.number, winnerBuyer, lotteryPrice);
 	LogApprovedTickets(approvedTickets);
 
-	delete approvedTickets;
-	delete globalXOR;
 	lotteryPrice = 0;
-	    
+	delete approvedTickets;
+	delete globalXOR;		    
 	return true;
     }
 
     function dummyTx(){} //Populus to increment block.number.
 
     // --------------------------------------------------GETTERS----------------------------------
-    
+
+    function getSelectedIndex() constant returns (uint)
+    {
+	return selectedIndex;
+    }
+
     function getGlobalXOR() constant returns (uint)
     {
 	return globalXOR;
