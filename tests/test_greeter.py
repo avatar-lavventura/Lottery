@@ -24,7 +24,7 @@ def test_greeter(web3, accounts, chain):
     hexData    = secretHash[2:].decode("hex");
     #print secretHash          
     
-    set_txn_hash = myContract.transact({"from": web3.eth.defaultAccount, "value": web3.toWei(3*tickerPrice, "wei") }).buyLotteryTicket(hexData, 3)
+    set_txn_hash = myContract.transact({"from": web3.eth.defaultAccount, "value": web3.toWei(10*tickerPrice, "wei") }).buyLotteryTicket(hexData, 10)
     chain.wait.for_receipt(set_txn_hash);                                                    
     #print "BlockNumber: " + str(web3.eth.blockNumber);
    
@@ -72,6 +72,7 @@ def test_greeter(web3, accounts, chain):
 
     index = myContract.call().getSelectedIndex();
     print "Index: " + str(index);
+    winners = myContract.call().getWinner()    
     print "Winners: " 
     print winners
 
