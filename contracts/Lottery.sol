@@ -29,9 +29,9 @@ contract Lottery {
 	owner               = msg.sender;
 	latestBlockNum      = block.number;
 
-	submissionTime   = 5; //5760; //Worst case around ~1 Day.
-	submitSecretTime = 5; //2400; //Worst case around ~1 hour.
-	payoutTime       = 2400; //Worst case around ~1 hour.
+	submissionTime   = 5760; //Worst case around ~1 Day.
+	submitSecretTime = 240; //Worst case around ~1 hour.
+	payoutTime       = 240; //Worst case around ~1 hour.
     }
 
     function buyLotteryTicket(bytes32 secretHash, uint ticketNum) payable returns (bool success)
